@@ -1,7 +1,4 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
-package cmd
+package cli
 
 import (
 	"fmt"
@@ -12,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// allCmd represents the all command
 var allCmd = &cobra.Command{
 	Use:   "all",
 	Short: "",
@@ -20,12 +16,11 @@ var allCmd = &cobra.Command{
 	Run:   listAll,
 }
 
-func listAll(cmd *cobra.Command, args []string) {
+func listAll(cli *cobra.Command, args []string) {
 	URL := "http://localhost:4000/v1/documents"
 
 	fmt.Println("Trying to get all documents...")
 
-	// Get the data
 	response, err := http.Get(URL)
 	if err != nil {
 		fmt.Println(err)
@@ -45,5 +40,5 @@ func listAll(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	listCmd.AddCommand(allCmd)
+	ListCmd.AddCommand(allCmd)
 }

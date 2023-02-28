@@ -1,7 +1,4 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
-package cmd
+package cli
 
 import (
 	"fmt"
@@ -11,9 +8,9 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-// myCmd represents the my command
 var myCmd = &cobra.Command{
 	Use:   "my",
 	Short: "",
@@ -21,13 +18,12 @@ var myCmd = &cobra.Command{
 	Run:   listMy,
 }
 
-func listMy(cmd *cobra.Command, args []string) {
+func listMy(cli *cobra.Command, args []string) {
 	URL := "http://localhost:4000/v1/documents/my"
 
 	fmt.Println("Trying to get your documents...")
 
-	// bearer := "Bearer " + os.Getenv("viadro_auth_token")
-	bearer := "Bearer " + "TPKQVHZIBQ3YPSWGRAORW6NUFY"
+	bearer := "Bearer " + viper.GetString("tkn")
 	fmt.Println(bearer)
 
 	req, _ := http.NewRequest("GET", URL, nil)
@@ -53,7 +49,7 @@ func listMy(cmd *cobra.Command, args []string) {
 }
 
 func init() {
-	listCmd.AddCommand(myCmd)
+	ListCmd.AddCommand(myCmd)
 
 	myCmd.PersistentFlags().StringP("visibility", "v", "", "Possible values: public, hidden")
 	myCmd.MarkPersistentFlagRequired("visibility")

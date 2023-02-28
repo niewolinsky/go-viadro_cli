@@ -1,36 +1,33 @@
-/*
-Copyright © 2023 NAME HERE <EMAIL ADDRESS>
-*/
-package cmd
+package cli
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-// authCmd represents the auth command
-var authCmd = &cobra.Command{
+var AuthCmd = &cobra.Command{
 	Use:   "auth",
 	Short: "A brief description of your command",
 	Long:  ``,
 	Run:   auth,
+	Args:  cobra.ExactArgs(2),
 }
 
-func auth(cmd *cobra.Command, args []string) {
+func auth(cli *cobra.Command, args []string) {
 	URL := "http://localhost:4000/v1/users/authenticate"
 
 	input := struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
 	}{
-		Email:    "user1@gmail.com",
-		Password: "haslo456",
+		Email:    args[0],
+		Password: args[1],
 	}
 
 	jsonified, _ := json.MarshalIndent(input, "", "\t")
@@ -61,10 +58,11 @@ func auth(cmd *cobra.Command, args []string) {
 		fmt.Println(err)
 	}
 
-	os.Setenv(respStruct.AuthenticationToken.Token, "viadro_auth_token")
-	fmt.Println("Sucessfully authenticated with token: ", respStruct.AuthenticationToken.Token)
-}
+	viper.Set("tkn", respStruct.AuthenticationToken.Token)
+	err = viper.WriteConfig()
+	if err != nil {
+		panic("Could not write config: " + err.Error())
+	}
 
-func init() {
-	rootCmd.AddCommand(authCmd)
+	fmt.Println("Sucessfully authenticated with token: ", respStruct.AuthenticationToken.Token)
 }
