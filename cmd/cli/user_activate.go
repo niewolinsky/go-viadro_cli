@@ -1,13 +1,11 @@
 package cli
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
+	"viadro_cli/utils"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,39 +20,29 @@ var UserActivateCmd = &cobra.Command{
 }
 
 func userActivate(cli *cobra.Command, args []string) {
-	URL := viper.GetString("endpoint") + "/users/activate"
-
-	client := &http.Client{Timeout: 10 * time.Second}
-
 	input := struct {
 		TokenPlaintext string `json:"token"`
 	}{
 		TokenPlaintext: args[0],
 	}
 
-	jsonified, _ := json.MarshalIndent(input, "", "\t")
-	reader := bytes.NewReader(jsonified)
+	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/users/activate", http.MethodPut)
 
-	req, err := http.NewRequest(http.MethodPut, URL, reader)
-	if err != nil {
-		fmt.Println("error tutaj")
-	}
-
+	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal("Service unavailable, try again later.")
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
-		bodyBytes, err := io.ReadAll(res.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
-		bodyString := string(bodyBytes)
-		fmt.Println(bodyString)
+		fmt.Println("User successfully activated, use auth command to login.")
+	} else if res.StatusCode == http.StatusBadRequest {
+		fmt.Println("malformed json request", res.StatusCode)
+	} else if res.StatusCode == http.StatusUnprocessableEntity {
+		fmt.Println("invalid or expired token", res.StatusCode)
 	} else {
-		fmt.Println(res.StatusCode)
+		fmt.Println("internal server error, try again later", res.StatusCode)
 	}
 }
 

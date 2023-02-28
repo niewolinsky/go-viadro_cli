@@ -1,13 +1,12 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
+	"viadro_cli/utils"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -22,10 +21,6 @@ var UserRegisterCmd = &cobra.Command{
 }
 
 func userRegister(cli *cobra.Command, args []string) {
-	URL := viper.GetString("endpoint") + "/users/register"
-
-	client := &http.Client{Timeout: 10 * time.Second}
-
 	input := struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
@@ -36,29 +31,38 @@ func userRegister(cli *cobra.Command, args []string) {
 		Password: args[2],
 	}
 
-	jsonified, _ := json.MarshalIndent(input, "", "\t")
-	reader := bytes.NewReader(jsonified)
+	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/users/register", http.MethodPost)
 
-	req, err := http.NewRequest(http.MethodPost, URL, reader)
-	if err != nil {
-		fmt.Println("error tutaj")
-	}
-
+	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal("Service unavailable, try again later.")
 	}
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusAccepted {
-		bodyBytes, err := io.ReadAll(res.Body)
+		respStruct := struct {
+			User struct {
+				ID        int       `json:"id"`
+				CreatedAt time.Time `json:"created_at"`
+				Username  string    `json:"username"`
+				Email     string    `json:"email"`
+				Activated bool      `json:"activated"`
+			} `json:"user"`
+		}{}
+
+		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 		}
-		bodyString := string(bodyBytes)
-		fmt.Println(bodyString)
+
+		fmt.Printf("Created new user with ID: %d, check your email for account activation. \n", respStruct.User.ID)
+	} else if res.StatusCode == http.StatusBadRequest {
+		fmt.Println("malformed json request", res.StatusCode)
+	} else if res.StatusCode == http.StatusUnprocessableEntity {
+		fmt.Println("account with this email already exists", res.StatusCode)
 	} else {
-		fmt.Println(res.StatusCode)
+		fmt.Println("internal server error, try again later", res.StatusCode)
 	}
 }
 

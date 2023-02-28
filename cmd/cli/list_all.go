@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/spf13/cobra"
 )
@@ -19,23 +20,27 @@ var allCmd = &cobra.Command{
 func listAll(cli *cobra.Command, args []string) {
 	URL := "http://localhost:4000/v1/documents"
 
-	fmt.Println("Trying to get all documents...")
-
-	response, err := http.Get(URL)
+	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal("Can't form request")
 	}
-	defer response.Body.Close()
 
-	if response.StatusCode == http.StatusOK {
-		bodyBytes, err := io.ReadAll(response.Body)
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal("Service unavailable, try again later.")
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode == http.StatusOK {
+		bodyBytes, err := io.ReadAll(res.Body)
 		if err != nil {
 			log.Fatal(err)
 		}
 		bodyString := string(bodyBytes)
 		fmt.Println(bodyString)
 	} else {
-		fmt.Println("Error getting all documents")
+		fmt.Println("internal server error, try again later", res.StatusCode)
 	}
 }
 

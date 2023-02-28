@@ -12,6 +12,6 @@ var UserCmd = &cobra.Command{
 	Short: "",
 	Long:  ``,
 	Run: func(cli *cobra.Command, args []string) {
-		fmt.Println("Avaiable subcommands: register, activate, auth")
+		fmt.Println("Available subcommands: register, activate, auth")
 	},
 }

@@ -10,9 +10,7 @@ var ListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "",
 	Long:  ``,
-	Run:   subAlert,
-}
-
-func subAlert(cli *cobra.Command, args []string) {
-	fmt.Println("test")
+	Run: func(cli *cobra.Command, args []string) {
+		fmt.Println("Available subcommands: all, my")
+	},
 }

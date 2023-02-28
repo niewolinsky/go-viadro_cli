@@ -15,7 +15,7 @@ func main() {
 	rootCmd.AddCommand(cli.ListCmd)
 	rootCmd.AddCommand(cli.UserCmd)
 	rootCmd.AddCommand(cli.UploadCmd)
-	rootCmd.AddCommand(cli.MergeCmd)
+	// rootCmd.AddCommand(cli.MergeCmd)
 
 	err := rootCmd.Execute()
 	if err != nil {

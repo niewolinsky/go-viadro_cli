@@ -1,11 +1,12 @@
 package cli
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
+	"viadro_cli/utils"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -20,10 +21,6 @@ var UserAuthCmd = &cobra.Command{
 }
 
 func userAuth(cli *cobra.Command, args []string) {
-	URL := viper.GetString("endpoint") + "/users/authenticate"
-
-	client := &http.Client{Timeout: 10 * time.Second}
-
 	input := struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -32,17 +29,12 @@ func userAuth(cli *cobra.Command, args []string) {
 		Password: args[1],
 	}
 
-	jsonified, _ := json.MarshalIndent(input, "", "\t")
-	reader := bytes.NewReader(jsonified)
+	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/users/authenticate", http.MethodPut)
 
-	req, err := http.NewRequest(http.MethodPut, URL, reader)
-	if err != nil {
-		fmt.Println("error tutaj")
-	}
-
+	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatal("Service unavailable, try again later.")
 	}
 	defer res.Body.Close()
 
@@ -65,9 +57,14 @@ func userAuth(cli *cobra.Command, args []string) {
 			panic("Could not write config: " + err.Error())
 		}
 
-		fmt.Println("Sucessfully authenticated with token: ", respStruct.AuthenticationToken.Token)
+		fmt.Println("Successfully logged in, your authentication token: ", respStruct.AuthenticationToken.Token)
+		fmt.Println("Token has been stored in config, for the next 24 hours requests will automatically use it.")
+	} else if res.StatusCode == http.StatusBadRequest {
+		fmt.Println("malformed json request", res.StatusCode)
+	} else if res.StatusCode == http.StatusUnauthorized {
+		fmt.Println("wrong email or password", res.StatusCode)
 	} else {
-		fmt.Println(res.StatusCode)
+		fmt.Println("internal server error, try again later", res.StatusCode)
 	}
 }
 
