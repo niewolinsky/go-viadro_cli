@@ -14,7 +14,7 @@ import (
 
 var UserRegisterCmd = &cobra.Command{
 	Use:   "register",
-	Short: "",
+	Short: "Register a new user for the Viadro service",
 	Long:  ``,
 	Run:   userRegister,
 	Args:  cobra.ExactArgs(3),

@@ -12,7 +12,7 @@ import (
 
 var allCmd = &cobra.Command{
 	Use:   "all",
-	Short: "",
+	Short: "List all visible (public) documents",
 	Long:  ``,
 	Run:   listAll,
 }

@@ -13,7 +13,7 @@ import (
 
 var myCmd = &cobra.Command{
 	Use:   "my",
-	Short: "",
+	Short: "List all of user's documents",
 	Long:  ``,
 	Run:   listMy,
 }

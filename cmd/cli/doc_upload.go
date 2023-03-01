@@ -17,7 +17,7 @@ import (
 
 var UploadCmd = &cobra.Command{
 	Use:   "upload",
-	Short: "",
+	Short: "Upload document to the cloud",
 	Long:  ``,
 	Run:   documentUpload,
 	Args:  cobra.ExactArgs(2),

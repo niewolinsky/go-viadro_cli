@@ -13,7 +13,7 @@ import (
 
 var ToggleCmd = &cobra.Command{
 	Use:   "toggle",
-	Short: "",
+	Short: "Toggle document visibility",
 	Long:  ``,
 	Run:   documentToggle,
 	Args:  cobra.ExactArgs(1),

@@ -14,7 +14,7 @@ import (
 
 var UserAuthCmd = &cobra.Command{
 	Use:   "auth",
-	Short: "",
+	Short: "Authenticate (login) an existing user",
 	Long:  ``,
 	Run:   userAuth,
 	Args:  cobra.ExactArgs(2),

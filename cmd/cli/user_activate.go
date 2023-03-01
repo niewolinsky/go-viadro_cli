@@ -13,7 +13,7 @@ import (
 
 var UserActivateCmd = &cobra.Command{
 	Use:   "activate",
-	Short: "",
+	Short: "Activate user account",
 	Long:  ``,
 	Run:   userActivate,
 	Args:  cobra.ExactArgs(1),

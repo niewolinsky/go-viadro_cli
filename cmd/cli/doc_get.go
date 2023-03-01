@@ -14,7 +14,7 @@ import (
 
 var GetCmd = &cobra.Command{
 	Use:   "get",
-	Short: "",
+	Short: "Get details about a document",
 	Long:  ``,
 	Run:   documentGet,
 	Args:  cobra.ExactArgs(1),
