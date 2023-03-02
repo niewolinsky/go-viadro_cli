@@ -31,7 +31,7 @@ func userRegister(cli *cobra.Command, args []string) {
 		Password: args[2],
 	}
 
-	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/users/register", http.MethodPost)
+	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/user/register", http.MethodPost)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)

@@ -29,7 +29,7 @@ func userAuth(cli *cobra.Command, args []string) {
 		Password: args[1],
 	}
 
-	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/users/authenticate", http.MethodPut)
+	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/user/authenticate", http.MethodPut)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)

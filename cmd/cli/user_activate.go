@@ -26,7 +26,7 @@ func userActivate(cli *cobra.Command, args []string) {
 		TokenPlaintext: args[0],
 	}
 
-	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/users/activate", http.MethodPut)
+	req := utils.PrepareRequest(input, viper.GetString("endpoint")+"/user/activate", http.MethodPut)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)

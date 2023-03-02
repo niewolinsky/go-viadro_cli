@@ -29,7 +29,7 @@ func documentGet(cli *cobra.Command, args []string) {
 	url := fmt.Sprintf(`http://localhost:4000/v1/document/%d`, document_id)
 	bearer := "Bearer " + viper.GetString("tkn")
 
-	show_details, err := cli.Flags().GetBool("details")
+	_, err = cli.Flags().GetBool("details")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -56,7 +56,6 @@ func documentGet(cli *cobra.Command, args []string) {
 		}
 		bodyString := string(bodyBytes)
 		fmt.Println(bodyString)
-		fmt.Println(show_details)
 	} else if res.StatusCode == http.StatusUnauthorized {
 		fmt.Println("You do not have permissions to view the document.")
 	} else if res.StatusCode == http.StatusNotFound {

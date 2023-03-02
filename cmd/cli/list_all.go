@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
@@ -33,12 +33,32 @@ func listAll(cli *cobra.Command, args []string) {
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
-		bodyBytes, err := io.ReadAll(res.Body)
+		respStruct := struct {
+			Documents []struct {
+				DocumentID int       `json:"document_id"`
+				Title      string    `json:"title"`
+				Link       string    `json:"link"`
+				Tags       []string  `json:"tags"`
+				CreatedAt  time.Time `json:"created_at"`
+			} `json:"documents"`
+			Metadata struct {
+				CurrentPage  int `json:"current_page"`
+				PageSize     int `json:"page_size"`
+				FirstPage    int `json:"first_page"`
+				LastPage     int `json:"last_page"`
+				TotalRecords int `json:"total_records"`
+			} `json:"metadata"`
+		}{}
+
+		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 		}
-		bodyString := string(bodyBytes)
-		fmt.Println(bodyString)
+
+		for _, document := range respStruct.Documents {
+			fmt.Printf("ID: %d \n", document.DocumentID)
+		}
+
 	} else {
 		fmt.Println("internal server error, try again later", res.StatusCode)
 	}
