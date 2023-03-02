@@ -1,8 +1,8 @@
 package cli
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"time"
@@ -43,12 +43,40 @@ func listMy(cli *cobra.Command, args []string) {
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
-		bodyBytes, err := io.ReadAll(res.Body)
+		respStruct := struct {
+			Documents []struct {
+				DocumentID int       `json:"document_id"`
+				Title      string    `json:"title"`
+				Link       string    `json:"link"`
+				Tags       []string  `json:"tags"`
+				CreatedAt  time.Time `json:"created_at"`
+				Is_hidden  bool      `json:"is_hidden"`
+			} `json:"documents"`
+			Metadata struct {
+				CurrentPage  int `json:"current_page"`
+				PageSize     int `json:"page_size"`
+				FirstPage    int `json:"first_page"`
+				LastPage     int `json:"last_page"`
+				TotalRecords int `json:"total_records"`
+			} `json:"metadata"`
+		}{}
+
+		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Println(err)
 		}
-		bodyString := string(bodyBytes)
-		fmt.Println(bodyString)
+
+		for _, document := range respStruct.Documents {
+			if visibility == "hidden" && !document.Is_hidden {
+				continue
+			}
+
+			if visibility == "public" && document.Is_hidden {
+				continue
+			}
+
+			fmt.Println(document)
+		}
 	} else if res.StatusCode == http.StatusUnauthorized {
 		fmt.Println("Invalid or expired token, use auth command to grab a new token.")
 	} else {

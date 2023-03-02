@@ -56,7 +56,7 @@ func listAll(cli *cobra.Command, args []string) {
 		}
 
 		for _, document := range respStruct.Documents {
-			fmt.Printf("ID: %d \n", document.DocumentID)
+			fmt.Println(document)
 		}
 
 	} else {

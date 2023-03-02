@@ -63,7 +63,6 @@ func documentGet(cli *cobra.Command, args []string) {
 	} else {
 		fmt.Println("Internal server error, try again later.", res.StatusCode)
 	}
-
 }
 
 func init() {
