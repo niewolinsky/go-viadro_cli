@@ -26,6 +26,7 @@ func listMy(cli *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	//TODO: FLAG DIFFERENT RESULTS
 	fmt.Println(visibility)
 
 	req, err := http.NewRequest("GET", URL, nil)
