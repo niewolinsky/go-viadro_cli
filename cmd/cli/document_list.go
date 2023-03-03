@@ -10,7 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var allCmd = &cobra.Command{
+var DocumentListCmd = &cobra.Command{
 	Use:   "all",
 	Short: "List all visible (public) documents",
 	Long:  ``,
@@ -65,5 +65,5 @@ func listAll(cli *cobra.Command, args []string) {
 }
 
 func init() {
-	ListCmd.AddCommand(allCmd)
+	DocumentCmd.AddCommand(DocumentListCmd)
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var UploadCmd = &cobra.Command{
+var DocumentUploadCmd = &cobra.Command{
 	Use:   "upload",
 	Short: "Upload document to the cloud",
 	Long:  ``,
@@ -133,5 +133,6 @@ func mustOpen(f string) *os.File {
 }
 
 func init() {
-	UploadCmd.PersistentFlags().Bool("hidden", false, "Should the file be hidden? Default: visible")
+	DocumentCmd.AddCommand(DocumentUploadCmd)
+	DocumentUploadCmd.PersistentFlags().Bool("hidden", false, "Should the file be hidden? Default: visible")
 }

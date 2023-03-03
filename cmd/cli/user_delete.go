@@ -11,28 +11,27 @@ import (
 	"github.com/spf13/viper"
 )
 
-var ToggleCmd = &cobra.Command{
-	Use:   "toggle",
-	Short: "Toggle document visibility",
+var UserDeleteCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Delete (deactivate) a user from Viadro service",
 	Long:  ``,
-	Run:   documentToggle,
-	Args:  cobra.ExactArgs(1),
+	Run:   userDelete,
+	Args:  cobra.ExactArgs(3),
 }
 
-func documentToggle(cli *cobra.Command, args []string) {
-	document_id, err := strconv.Atoi(args[0])
+func userDelete(cli *cobra.Command, args []string) {
+	user_id, err := strconv.Atoi(args[0])
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	url := fmt.Sprintf(`http://localhost:4000/v1/document/%d`, document_id)
-	bearer := "Bearer " + viper.GetString("tkn")
-
-	req, err := http.NewRequest(http.MethodPatch, url, nil)
+	url := fmt.Sprintf(`http://localhost:4000/v1/user/%d`, user_id)
+	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		log.Fatal("Service unavailable, try again later.")
 	}
 
+	bearer := "Bearer " + viper.GetString("tkn")
 	req.Header.Add("Authorization", bearer)
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -42,17 +41,17 @@ func documentToggle(cli *cobra.Command, args []string) {
 	}
 	defer res.Body.Close()
 
-	if res.StatusCode == http.StatusOK {
-		fmt.Println("Successfully toggled visibility of document with ID:", document_id)
+	if res.StatusCode == http.StatusNoContent {
+		fmt.Println("User successfully deleted.")
 	} else if res.StatusCode == http.StatusUnauthorized {
-		fmt.Println("You do not have permissions to view the document.")
+		fmt.Println("You do not have permissions to delete the user.")
 	} else if res.StatusCode == http.StatusNotFound {
-		fmt.Println("Document with given ID does not exist.")
+		fmt.Println("User with given ID does not exist.")
 	} else {
 		fmt.Println("Internal server error, try again later.", res.StatusCode)
 	}
-
 }
 
 func init() {
+	UserCmd.AddCommand(UserDeleteCmd)
 }

@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var GetCmd = &cobra.Command{
+var DocumentGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get details about a document",
 	Long:  ``,
@@ -66,5 +66,6 @@ func documentGet(cli *cobra.Command, args []string) {
 }
 
 func init() {
-	GetCmd.PersistentFlags().Bool("details", false, "See file details? Default: hidden")
+	DocumentCmd.AddCommand(DocumentGetCmd)
+	DocumentGetCmd.PersistentFlags().Bool("details", false, "See file details? Default: hidden")
 }

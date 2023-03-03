@@ -7,11 +7,11 @@ import (
 )
 
 // userCmd represents the user command
-var UserCmd = &cobra.Command{
-	Use:   "user",
-	Short: "Manage user's credentials",
+var DocumentCmd = &cobra.Command{
+	Use:   "document",
+	Short: "Manage documents",
 	Long:  ``,
 	Run: func(cli *cobra.Command, args []string) {
-		fmt.Println("Available subcommands: register, activate, auth, delete")
+		fmt.Println("Available subcommands: list, get, grab, merge, toggle, upload")
 	},
 }
