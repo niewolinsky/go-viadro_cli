@@ -8,21 +8,41 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 var DocumentListCmd = &cobra.Command{
-	Use:   "all",
+	Use:   "list",
 	Short: "List all visible (public) documents",
 	Long:  ``,
 	Run:   listAll,
 }
 
 func listAll(cli *cobra.Command, args []string) {
-	URL := "http://localhost:4000/v1/documents"
+	owner, err := cli.Flags().GetString("owner")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	URL := ""
+
+	switch owner {
+	case "all":
+		URL = "http://localhost:4000/v1/documents/?owner=all"
+	case "me":
+		URL = "http://localhost:4000/v1/documents/?owner=me"
+	case "exclude":
+		URL = "http://localhost:4000/v1/documents/?owner=-me"
+	}
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
 		log.Fatal("Can't form request")
+	}
+
+	if owner != "all" {
+		bearer := "Bearer " + viper.GetString("tkn")
+		req.Header.Add("Authorization", bearer)
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -66,4 +86,5 @@ func listAll(cli *cobra.Command, args []string) {
 
 func init() {
 	DocumentCmd.AddCommand(DocumentListCmd)
+	DocumentListCmd.PersistentFlags().StringP("owner", "v", "all", "Files from which owners to show: all, me, exclude")
 }

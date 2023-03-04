@@ -20,7 +20,7 @@ var AdminDocumentListCmd = &cobra.Command{
 }
 
 func listAdminAll(cmd *cobra.Command, args []string) {
-	URL := "http://localhost:4000/v1/documents/all"
+	URL := "http://localhost:4000/v1/admin/documents"
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
