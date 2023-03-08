@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"viadro_cli/cmd/cli"
+	"viadro_cli/cmd/tui"
 	"viadro_cli/config"
 
 	"github.com/spf13/cobra"
@@ -15,6 +16,7 @@ func main() {
 	rootCmd.AddCommand(cli.DocumentCmd)
 	rootCmd.AddCommand(cli.UserCmd)
 	rootCmd.AddCommand(cli.AdminCmd)
+	rootCmd.AddCommand(tui.TuiCmd)
 
 	err := rootCmd.Execute()
 	if err != nil {

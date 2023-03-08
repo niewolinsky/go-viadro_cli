@@ -11,6 +11,23 @@ import (
 	"github.com/spf13/viper"
 )
 
+type RespStruct struct {
+	Documents []struct {
+		DocumentID int       `json:"document_id"`
+		Title      string    `json:"title"`
+		Link       string    `json:"link"`
+		Tags       []string  `json:"tags"`
+		CreatedAt  time.Time `json:"created_at"`
+	} `json:"documents"`
+	Metadata struct {
+		CurrentPage  int `json:"current_page"`
+		PageSize     int `json:"page_size"`
+		FirstPage    int `json:"first_page"`
+		LastPage     int `json:"last_page"`
+		TotalRecords int `json:"total_records"`
+	} `json:"metadata"`
+}
+
 var DocumentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all visible (public) documents",
@@ -23,6 +40,10 @@ func listAll(cli *cobra.Command, args []string) {
 	if err != nil {
 		log.Fatal(err)
 	}
+	ListTesting(args, owner)
+}
+
+func ListTesting(args []string, owner string) RespStruct {
 
 	URL := ""
 
@@ -53,35 +74,24 @@ func listAll(cli *cobra.Command, args []string) {
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
-		respStruct := struct {
-			Documents []struct {
-				DocumentID int       `json:"document_id"`
-				Title      string    `json:"title"`
-				Link       string    `json:"link"`
-				Tags       []string  `json:"tags"`
-				CreatedAt  time.Time `json:"created_at"`
-			} `json:"documents"`
-			Metadata struct {
-				CurrentPage  int `json:"current_page"`
-				PageSize     int `json:"page_size"`
-				FirstPage    int `json:"first_page"`
-				LastPage     int `json:"last_page"`
-				TotalRecords int `json:"total_records"`
-			} `json:"metadata"`
-		}{}
+		respStruct := RespStruct{}
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
 			fmt.Println(err)
 		}
 
-		for _, document := range respStruct.Documents {
-			fmt.Println(document)
-		}
+		// for _, document := range respStruct.Documents {
+		// 	fmt.Println(document)
+		// }
+
+		return respStruct
 
 	} else {
 		fmt.Println("internal server error, try again later", res.StatusCode)
 	}
+
+	return RespStruct{}
 }
 
 func init() {

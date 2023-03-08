@@ -15,11 +15,16 @@ var DocumentToggleCmd = &cobra.Command{
 	Use:   "toggle",
 	Short: "Toggle document visibility",
 	Long:  ``,
-	Run:   documentToggle,
+	Run:   DocumentToggle,
 	Args:  cobra.ExactArgs(1),
 }
 
-func documentToggle(cli *cobra.Command, args []string) {
+func DocumentToggle(cli *cobra.Command, args []string) {
+	msg := Toggle(args)
+	fmt.Println(msg)
+}
+
+func Toggle(args []string) string {
 	document_id, err := strconv.Atoi(args[0])
 	if err != nil {
 		log.Fatal(err)
@@ -43,15 +48,14 @@ func documentToggle(cli *cobra.Command, args []string) {
 	defer res.Body.Close()
 
 	if res.StatusCode == http.StatusOK {
-		fmt.Println("Successfully toggled visibility of document with ID:", document_id)
+		return fmt.Sprintf("Successfully toggled visibility of document with ID: %d", document_id)
 	} else if res.StatusCode == http.StatusUnauthorized {
-		fmt.Println("You do not have permissions to view the document.")
+		return "You do not have permissions to view the document."
 	} else if res.StatusCode == http.StatusNotFound {
-		fmt.Println("Document with given ID does not exist.")
+		return "Document with given ID does not exist."
 	} else {
-		fmt.Println("Internal server error, try again later.", res.StatusCode)
+		return "Internal server error, try again later."
 	}
-
 }
 
 func init() {
