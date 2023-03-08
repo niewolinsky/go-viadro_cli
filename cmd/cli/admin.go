@@ -16,42 +16,42 @@ import (
 var AdminCmd = &cobra.Command{
 	Use:   "admin",
 	Short: "Manage users and documents as administrator",
-	Run: func(cli *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: user, document")
 	},
 }
 var AdminUserCmd = &cobra.Command{
 	Use:   "user",
 	Short: "Manage users and documents as administrator",
-	Run: func(cli *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: delete, list, grant")
 	},
 }
 var AdminUserListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Manage users and documents as administrator",
-	Run:   listAllUsers,
+	Run:   cmdGetAllUsers,
 }
 var AdminUserGrantCmd = &cobra.Command{
 	Use:   "grant",
 	Short: "Manage users and documents as administrator",
-	Run:   grantAdmin,
+	Run:   cmdGrantAdmin,
 	Args:  cobra.ExactArgs(1),
 }
 var AdminDocumentCmd = &cobra.Command{
 	Use:   "document",
 	Short: "Manage users and documents as administrator",
-	Run: func(cli *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: list")
 	},
 }
 var AdminDocumentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "Manage users and documents as administrator",
-	Run:   listAllDocuments,
+	Run:   cmdGetAllDocumentsAdmin,
 }
 
-func listAllUsers(cli *cobra.Command, args []string) {
+func cmdGetAllUsers(cmd *cobra.Command, args []string) {
 	URL := "http://localhost:4000/v1/admin/users"
 	bearer := "Bearer " + viper.GetString("tkn")
 
@@ -96,7 +96,7 @@ func listAllUsers(cli *cobra.Command, args []string) {
 	}
 }
 
-func grantAdmin(cmd *cobra.Command, args []string) {
+func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 	user_id, err := strconv.Atoi(args[0])
 	if err != nil {
 		log.Fatal(err)
@@ -147,7 +147,7 @@ func grantAdmin(cmd *cobra.Command, args []string) {
 	}
 }
 
-func listAllDocuments(cmd *cobra.Command, args []string) {
+func cmdGetAllDocumentsAdmin(cmd *cobra.Command, args []string) {
 	URL := "http://localhost:4000/v1/admin/documents"
 
 	req, err := http.NewRequest("GET", URL, nil)
@@ -206,6 +206,7 @@ func init() {
 	AdminCmd.AddCommand(AdminUserCmd)
 	AdminUserCmd.AddCommand(AdminUserListCmd)
 	AdminUserCmd.AddCommand(AdminUserGrantCmd)
+
 	AdminCmd.AddCommand(AdminDocumentCmd)
 	AdminDocumentCmd.AddCommand(AdminDocumentListCmd)
 }

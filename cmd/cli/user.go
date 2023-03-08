@@ -17,37 +17,37 @@ import (
 var UserCmd = &cobra.Command{
 	Use:   "user",
 	Short: "Manage user's credentials",
-	Run: func(cli *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: register, activate, auth, delete")
 	},
 }
 var UserRegisterCmd = &cobra.Command{
 	Use:   "register",
 	Short: "Register a new user for the Viadro service",
-	Run:   userRegister,
+	Run:   cmdUserRegister,
 	Args:  cobra.ExactArgs(3),
 }
 var UserActivateCmd = &cobra.Command{
 	Use:   "activate",
 	Short: "Activate user account",
-	Run:   userActivate,
+	Run:   cmdUserActivate,
 	Args:  cobra.ExactArgs(1),
 }
 var UserAuthCmd = &cobra.Command{
 	Use:     "auth",
 	Aliases: []string{"login"},
 	Short:   "Authenticate (login) an existing user",
-	Run:     userAuth,
+	Run:     cmdUserAuth,
 	Args:    cobra.ExactArgs(2),
 }
 var UserDeleteCmd = &cobra.Command{
 	Use:   "delete",
 	Short: "Delete (deactivate) a user from Viadro service",
-	Run:   userDelete,
+	Run:   cmdUserDelete,
 	Args:  cobra.ExactArgs(3),
 }
 
-func userRegister(cli *cobra.Command, args []string) {
+func cmdUserRegister(cmd *cobra.Command, args []string) {
 	input := struct {
 		Username string `json:"username"`
 		Email    string `json:"email"`
@@ -94,7 +94,7 @@ func userRegister(cli *cobra.Command, args []string) {
 	}
 }
 
-func userActivate(cli *cobra.Command, args []string) {
+func cmdUserActivate(cmd *cobra.Command, args []string) {
 	input := struct {
 		TokenPlaintext string `json:"token"`
 	}{
@@ -122,7 +122,7 @@ func userActivate(cli *cobra.Command, args []string) {
 	}
 }
 
-func userAuth(cli *cobra.Command, args []string) {
+func cmdUserAuth(cmd *cobra.Command, args []string) {
 	input := struct {
 		Email    string `json:"email"`
 		Password string `json:"password"`
@@ -171,7 +171,7 @@ func userAuth(cli *cobra.Command, args []string) {
 	}
 }
 
-func userDelete(cli *cobra.Command, args []string) {
+func cmdUserDelete(cmd *cobra.Command, args []string) {
 	user_id, err := strconv.Atoi(args[0])
 	if err != nil {
 		log.Fatal(err)
@@ -207,7 +207,10 @@ func userDelete(cli *cobra.Command, args []string) {
 
 func init() {
 	UserCmd.AddCommand(UserRegisterCmd)
+
 	UserCmd.AddCommand(UserDeleteCmd)
+
 	UserCmd.AddCommand(UserAuthCmd)
+
 	UserCmd.AddCommand(UserActivateCmd)
 }

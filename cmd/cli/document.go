@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	pdfcpu "github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -43,35 +44,47 @@ type Multipart struct {
 var DocumentCmd = &cobra.Command{
 	Use:   "document",
 	Short: "Manage documents",
-	Run: func(cli *cobra.Command, args []string) {
+	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: list, get, grab, merge, toggle, upload")
 	},
 }
 var DocumentGetCmd = &cobra.Command{
 	Use:   "get",
 	Short: "Get details about a document",
-	Run:   documentGet,
+	Run:   cmdGetDocument,
 	Args:  cobra.ExactArgs(1),
 }
 var DocumentListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all visible (public) documents",
-	Run:   listAll,
+	Run:   cmdGetAllDocuments,
 }
 var DocumentToggleCmd = &cobra.Command{
 	Use:   "toggle",
 	Short: "Toggle document visibility",
-	Run:   DocumentToggle,
+	Run:   cmdToggleDocument,
 	Args:  cobra.ExactArgs(1),
 }
 var DocumentUploadCmd = &cobra.Command{
 	Use:   "upload",
 	Short: "Upload document to the cloud",
-	Run:   documentUpload,
+	Run:   cmdUploadDocument,
 	Args:  cobra.ExactArgs(2),
 }
+var DocumentMergeCmd = &cobra.Command{
+	Use:   "merge",
+	Short: "",
+	Run:   cmdDocumentsMerge,
+	Args:  cobra.MinimumNArgs(3),
+}
+var DocumentGrabCmd = &cobra.Command{
+	Use:   "grab",
+	Short: "Manage documents",
+	Run:   cmdGrabDocument,
+	Args:  cobra.ExactArgs(1),
+}
 
-func documentGet(cli *cobra.Command, args []string) {
+func cmdGetDocument(cmd *cobra.Command, args []string) {
 	document_id, err := strconv.Atoi(args[0])
 	if err != nil {
 		log.Fatal(err)
@@ -80,7 +93,7 @@ func documentGet(cli *cobra.Command, args []string) {
 	url := fmt.Sprintf(`http://localhost:4000/v1/document/%d`, document_id)
 	bearer := "Bearer " + viper.GetString("tkn")
 
-	_, err = cli.Flags().GetBool("details")
+	_, err = cmd.Flags().GetBool("details")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -129,8 +142,8 @@ func documentGet(cli *cobra.Command, args []string) {
 	}
 }
 
-func listAll(cli *cobra.Command, args []string) {
-	owner, err := cli.Flags().GetString("owner")
+func cmdGetAllDocuments(cmd *cobra.Command, args []string) {
+	owner, err := cmd.Flags().GetString("owner")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -187,7 +200,7 @@ func ListTesting(args []string, owner string) RespStruct {
 	return RespStruct{}
 }
 
-func DocumentToggle(cli *cobra.Command, args []string) {
+func cmdToggleDocument(cmd *cobra.Command, args []string) {
 	msg := Toggle(args)
 	fmt.Println(msg)
 }
@@ -227,26 +240,30 @@ func Toggle(args []string) string {
 	}
 }
 
-func documentUpload(cli *cobra.Command, args []string) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	URL := viper.GetString("endpoint") + "/document"
-
-	is_hidden, err := cli.Flags().GetBool("hidden")
+func cmdUploadDocument(cmd *cobra.Command, args []string) {
+	isHidden, err := cmd.Flags().GetBool("hidden")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	uploadDocument(args[0], args[1], isHidden)
+}
+
+func uploadDocument(filepath string, tagsX string, isHidden bool) {
+	client := &http.Client{Timeout: 10 * time.Second}
+	URL := viper.GetString("endpoint") + "/document"
+
 	//* UGLY AF, FIX
-	tagz := strings.Split(args[1], ",")
+	tagz := strings.Split(tagsX, ",")
 	tags := fmt.Sprintf("%#v", tagz)
 	tags = tags[8:]
 	tags = strings.Replace(tags, "{", "[", -1)
 	tags = strings.Replace(tags, "}", "]", -1)
 
-	metadata := fmt.Sprintf(`{"is_hidden": %v, "tags": %s}`, is_hidden, tags)
+	metadata := fmt.Sprintf(`{"is_hidden": %v, "tags": %s}`, isHidden, tags)
 
 	input := Multipart{
-		Document: mustOpen(args[0]),
+		Document: mustOpen(filepath),
 		Metadata: metadata,
 	}
 
@@ -319,6 +336,54 @@ func mustOpen(f string) *os.File {
 	return r
 }
 
+func cmdDocumentsMerge(cmd *cobra.Command, args []string) {
+	mergeTempFile, err := os.Create("merge-temp.pdf")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer mergeTempFile.Close()
+
+	err = pdfcpu.Merge(args[0], args[1:], mergeTempFile, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	uploadDocument("merge-temp.pdf", "merged,test", false)
+}
+
+func cmdGrabDocument(cmd *cobra.Command, args []string) {
+	// Create the file
+	out, err := os.Create("grab-temp.pdf")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+
+	url := args[0]
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.Fatal("Service unavailable, try again later.")
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal("Service unavailable, try again later.")
+	}
+	defer res.Body.Close()
+
+	// Check server response
+	switch res.StatusCode {
+	case http.StatusOK:
+		_, err = io.Copy(out, res.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		uploadDocument("grab-temp.pdf", "grab,net", false)
+	}
+}
+
 func init() {
 	DocumentCmd.AddCommand(DocumentGetCmd)
 	DocumentGetCmd.PersistentFlags().Bool("details", false, "See file details? Default: hidden")
@@ -330,4 +395,8 @@ func init() {
 
 	DocumentCmd.AddCommand(DocumentUploadCmd)
 	DocumentUploadCmd.PersistentFlags().Bool("hidden", false, "Should the file be hidden? Default: visible")
+
+	DocumentCmd.AddCommand(DocumentMergeCmd)
+
+	DocumentCmd.AddCommand(DocumentGrabCmd)
 }

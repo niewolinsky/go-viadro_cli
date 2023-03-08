@@ -1,6 +1,7 @@
 bin/
 tls/
 tmp/
+pdfs/
 vendor/
 *.env
 *.pdf
