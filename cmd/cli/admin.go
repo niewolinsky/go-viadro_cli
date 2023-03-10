@@ -16,39 +16,47 @@ import (
 var AdminCmd = &cobra.Command{
 	Use:   "admin",
 	Short: "Manage users and documents as administrator",
+	Long:  "Manage users and documents as administrator",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: user, document")
 	},
 }
 var AdminUserCmd = &cobra.Command{
 	Use:   "user",
-	Short: "Manage users and documents as administrator",
+	Short: "Manage users as administrator",
+	Long:  "Manage users as administrator",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: delete, list, grant")
 	},
 }
 var AdminUserListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Manage users and documents as administrator",
-	Run:   cmdGetAllUsers,
+	Use:     "list",
+	Example: "viadro admin user list",
+	Short:   "List all registered users",
+	Long:    "List all registered users",
+	Run:     cmdGetAllUsers,
 }
 var AdminUserGrantCmd = &cobra.Command{
-	Use:   "grant",
-	Short: "Manage users and documents as administrator",
-	Run:   cmdGrantAdmin,
-	Args:  cobra.ExactArgs(1),
+	Use:     "grant <user_id>",
+	Example: "viadro admin user grant 1",
+	Short:   "Grant user admin privileges",
+	Long:    "Grant user admin privileges",
+	Run:     cmdGrantAdmin,
+	Args:    cobra.ExactArgs(1),
 }
 var AdminDocumentCmd = &cobra.Command{
 	Use:   "document",
-	Short: "Manage users and documents as administrator",
+	Short: "Manage documents as administrator",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Available subcommands: list")
 	},
 }
 var AdminDocumentListCmd = &cobra.Command{
-	Use:   "list",
-	Short: "Manage users and documents as administrator",
-	Run:   cmdGetAllDocumentsAdmin,
+	Use:     "list",
+	Example: "viadro admin document list",
+	Short:   "List all documents regardless of document visibility",
+	Long:    "List all documents regardless of document visibility",
+	Run:     cmdGetAllDocumentsAdmin,
 }
 
 // * RUN * //
@@ -58,14 +66,14 @@ func cmdGetAllUsers(cmd *cobra.Command, args []string) {
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
-		log.Fatal("can't form request", "error", err)
+		logger.Fatal("app error")
 	}
 	req.Header.Add("Authorization", bearer)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("service unavailable, try again later")
+		logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -73,7 +81,7 @@ func cmdGetAllUsers(cmd *cobra.Command, args []string) {
 	case http.StatusOK:
 		respStruct := struct {
 			Users []struct {
-				ID        int       `json:"id"`
+				UserId    int       `json:"user_id"`
 				CreatedAt time.Time `json:"created_at"`
 				Username  string    `json:"username"`
 				Email     string    `json:"email"`
@@ -84,30 +92,33 @@ func cmdGetAllUsers(cmd *cobra.Command, args []string) {
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			fmt.Println(err)
+			logger.Fatal("app error")
 		}
 
+		logger.Info("list of users: ")
 		for _, user := range respStruct.Users {
-			fmt.Println(user)
+			fmt.Printf("ID: %d | CREATED: %v | USERNAME: %s | EMAIL: %s | ACTIVATED: %v | ADMIN: %v \n", user.UserId, user.CreatedAt, user.Username, user.Email, user.Activated, user.IsAdmin)
 		}
 	case http.StatusUnauthorized:
-		fmt.Println("invalid or expired token, use auth command to grab a new token")
+		logger.Fatal("invalid or expired token, use auth command to grab a new token")
+	case http.StatusForbidden:
+		logger.Fatal("you do not have required privileges to perform this action")
 	default:
-		fmt.Println("internal server error, try again later")
+		logger.Fatal("internal server error, try again later")
 	}
 }
 
 func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 	user_id, err := strconv.Atoi(args[0])
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("app error")
 	}
 
 	url := fmt.Sprintf(`http://localhost:4000/v1/admin/user/%d`, user_id)
 
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	if err != nil {
-		log.Fatal("service unavailable, try again later")
+		logger.Fatal("app error")
 	}
 
 	bearer := "Bearer " + viper.GetString("tkn")
@@ -135,16 +146,16 @@ func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			fmt.Println(err)
+			logger.Fatal("app error")
 		}
 
-		fmt.Printf("Successfully toggled admin privileges of user with ID: %d", respStruct.User.UserID)
+		logger.Info("Successfully toggled admin privileges of user with id: %d", respStruct.User.UserID)
 	case http.StatusUnauthorized:
-		fmt.Println("you do not have permissions to toggle admin privileges")
+		logger.Fatal("you do not have permissions to toggle admin privileges")
 	case http.StatusNotFound:
-		fmt.Println("user with given ID does not exist")
+		logger.Fatal("user with given id does not exist")
 	default:
-		fmt.Println("internal server error, try again later")
+		logger.Fatal("internal server error, try again later")
 	}
 }
 
@@ -168,38 +179,24 @@ func cmdGetAllDocumentsAdmin(cmd *cobra.Command, args []string) {
 
 	switch res.StatusCode {
 	case http.StatusOK:
-		respStruct := struct {
-			Documents []struct {
-				DocumentID int       `json:"document_id"`
-				Title      string    `json:"title"`
-				Link       string    `json:"link"`
-				Tags       []string  `json:"tags"`
-				CreatedAt  time.Time `json:"created_at"`
-			} `json:"documents"`
-			Metadata struct {
-				CurrentPage  int `json:"current_page"`
-				PageSize     int `json:"page_size"`
-				FirstPage    int `json:"first_page"`
-				LastPage     int `json:"last_page"`
-				TotalRecords int `json:"total_records"`
-			} `json:"metadata"`
-		}{}
+		respStruct := DocumentList{}
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			fmt.Println(err)
+			logger.Fatal("app error")
 		}
 
+		logger.Info("list of documents: ")
 		for _, document := range respStruct.Documents {
-			fmt.Println(document)
+			fmt.Printf("ID: %d | TITLE: %s | LINK: %s | TAGS: %v | UPLOADED: %v \n", document.DocumentID, document.Title, document.Link, document.Tags, document.CreatedAt)
 		}
 
 	case http.StatusUnauthorized:
-		fmt.Println("invalid or expired token, use auth command to grab a new token")
+		logger.Fatal("invalid or expired token, use auth command to grab a new token")
 	case http.StatusForbidden:
-		fmt.Println("you dont have required role or privilege to complete this action")
+		logger.Fatal("you do not have required privileges to perform this action")
 	default:
-		fmt.Println("internal server error, try again later")
+		logger.Fatal("internal server error, try again later")
 	}
 }
 

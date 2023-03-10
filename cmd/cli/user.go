@@ -8,7 +8,6 @@ import (
 	"time"
 	"viadro_cli/utils"
 
-	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -17,34 +16,51 @@ import (
 var UserCmd = &cobra.Command{
 	Use:   "user",
 	Short: "Manage user's credentials",
+	Long:  "Manage user's credentials",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Available subcommands: register, activate, auth, delete")
+		fmt.Println("Available subcommands: register, activate, auth|login, delete|remove|deactivate")
 	},
 }
 var UserRegisterCmd = &cobra.Command{
-	Use:   "register",
-	Short: "Register a new user for the Viadro service",
-	Run:   cmdUserRegister,
-	Args:  cobra.ExactArgs(3),
+	Use:     "register <username> <email> <password>",
+	Example: "viadro user register user1 user1@mail.com pass",
+	Long:    "Register a new user for the Viadro service",
+	Short:   "Register a new user for the Viadro service",
+	Run:     cmdUserRegister,
+	Args:    cobra.ExactArgs(3),
 }
 var UserActivateCmd = &cobra.Command{
-	Use:   "activate",
-	Short: "Activate user account",
-	Run:   cmdUserActivate,
-	Args:  cobra.ExactArgs(1),
+	Use:     "activate <token>",
+	Example: "viadro user activate TH2AP6G6IWWZA7MQRLO6F4C2PI",
+	Short:   "Activate user account",
+	Long:    "Activate user account",
+	Run:     cmdUserActivate,
+	Args:    cobra.ExactArgs(1),
 }
 var UserAuthCmd = &cobra.Command{
-	Use:     "auth",
+	Use:     "auth <email> <password>",
 	Aliases: []string{"login"},
+	Example: "viadro user auth user1 pass",
 	Short:   "Authenticate (login) an existing user",
+	Long:    "Authenticate (login) an existing user",
 	Run:     cmdUserAuth,
 	Args:    cobra.ExactArgs(2),
 }
 var UserDeleteCmd = &cobra.Command{
-	Use:   "delete",
-	Short: "Delete (deactivate) a user from Viadro service",
-	Run:   cmdUserDelete,
-	Args:  cobra.ExactArgs(3),
+	Use:     "delete <user_id>",
+	Aliases: []string{"remove, deactivate"},
+	Example: "viadro user delete 1",
+	Short:   "Delete (deactivate) a user from Viadro service",
+	Long:    "Delete (deactivate) a user from Viadro service",
+	Run:     cmdUserDelete,
+	Args:    cobra.ExactArgs(1),
+}
+var UserLogoutCmd = &cobra.Command{
+	Use:     "logout",
+	Example: "viadro user logout",
+	Short:   "Logout from the service",
+	Long:    "Logout from the service",
+	Run:     cmdUserLogout,
 }
 
 // * RUN * //
@@ -64,7 +80,7 @@ func cmdUserRegister(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("service unavailable, try again later")
+		logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -72,7 +88,7 @@ func cmdUserRegister(cmd *cobra.Command, args []string) {
 	case http.StatusAccepted:
 		respStruct := struct {
 			User struct {
-				ID        int       `json:"id"`
+				UserId    int       `json:"user_id"`
 				CreatedAt time.Time `json:"created_at"`
 				Username  string    `json:"username"`
 				Email     string    `json:"email"`
@@ -82,16 +98,16 @@ func cmdUserRegister(cmd *cobra.Command, args []string) {
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			fmt.Println(err)
+			logger.Fatal("app error")
 		}
 
-		fmt.Printf("created new user with ID: %d, check your email for account activation. \n", respStruct.User.ID)
+		logger.Info("created new user, check your email for account activation", "user_id", respStruct.User.UserId)
 	case http.StatusBadRequest:
-		fmt.Println("malformed json request")
+		logger.Fatal("malformed json request")
 	case http.StatusUnprocessableEntity:
-		fmt.Println("account with this email already exists")
+		logger.Fatal("account with given email exists")
 	default:
-		fmt.Println("internal server error, try again later")
+		logger.Fatal("app error")
 	}
 }
 
@@ -107,19 +123,19 @@ func cmdUserActivate(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("service unavailable, try again later")
+		logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
 	switch res.StatusCode {
 	case http.StatusOK:
-		fmt.Println("User successfully activated, use auth command to login.")
+		logger.Info("user successfully activated, use auth command to login")
 	case http.StatusBadRequest:
-		fmt.Println("malformed json request")
+		logger.Fatal("malformed json request")
 	case http.StatusUnprocessableEntity:
-		fmt.Println("invalid or expired token")
+		logger.Fatal("invalid or expired token")
 	default:
-		fmt.Println("internal server error, try again later", res.StatusCode)
+		logger.Fatal("app error")
 	}
 }
 
@@ -137,7 +153,7 @@ func cmdUserAuth(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("service unavailable, try again later")
+		logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -158,30 +174,30 @@ func cmdUserAuth(cmd *cobra.Command, args []string) {
 		viper.Set("tkn", respStruct.AuthenticationToken.Token)
 		err = viper.WriteConfig()
 		if err != nil {
-			panic("Could not write config: " + err.Error())
+			logger.Fatal("app error")
 		}
 
-		fmt.Println("Successfully logged in, your authentication token: ", respStruct.AuthenticationToken.Token)
-		fmt.Println("Token has been stored in config, for the next 24 hours requests will automatically use it.")
+		logger.Info("successfully logged in |", "token", respStruct.AuthenticationToken.Token)
+		logger.Info("token has been stored in config, for the next 24 hours requests will automatically use it")
 	case http.StatusBadRequest:
-		fmt.Println("malformed json request")
+		logger.Fatal("malformed json request")
 	case http.StatusUnauthorized:
-		fmt.Println("wrong email or password")
+		logger.Fatal("wrong email or password")
 	default:
-		fmt.Println("internal server error, try again later")
+		logger.Fatal("app error")
 	}
 }
 
 func cmdUserDelete(cmd *cobra.Command, args []string) {
 	user_id, err := strconv.Atoi(args[0])
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("invalid user id")
 	}
 
 	url := fmt.Sprintf(`http://localhost:4000/v1/user/%d`, user_id)
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
-		log.Fatal("service unavailable, try again later")
+		logger.Fatal("app error")
 	}
 
 	bearer := "Bearer " + viper.GetString("tkn")
@@ -190,19 +206,34 @@ func cmdUserDelete(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("service unavailable, try again later")
+		logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
 	switch res.StatusCode {
 	case http.StatusNoContent:
-		fmt.Println("User successfully deleted.")
+		fmt.Println("user and its files successfully deleted")
 	case http.StatusUnauthorized:
-		fmt.Println("You do not have permissions to delete the user.")
+		logger.Fatal("you do not have the permissions to delete the user")
 	case http.StatusNotFound:
-		fmt.Println("User with given ID does not exist.")
+		logger.Fatal("user with given id does not exists")
 	default:
-		fmt.Println("Internal server error, try again later.")
+		logger.Fatal("app error")
+	}
+}
+
+func cmdUserLogout(cmd *cobra.Command, args []string) {
+	token := viper.GetString("tkn")
+
+	if token == "" {
+		logger.Error("user is not logged in")
+	} else {
+		viper.Set("tkn", "")
+		err := viper.WriteConfig()
+		if err != nil {
+			logger.Fatal("app error")
+		}
+		logger.Info("user logged out successfully")
 	}
 }
 
@@ -215,4 +246,6 @@ func init() {
 	UserCmd.AddCommand(UserAuthCmd)
 
 	UserCmd.AddCommand(UserActivateCmd)
+
+	UserCmd.AddCommand(UserLogoutCmd)
 }
