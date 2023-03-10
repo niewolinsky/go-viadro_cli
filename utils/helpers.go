@@ -13,7 +13,7 @@ func PrepareRequest(input interface{}, url string, method string) *http.Request 
 
 	req, err := http.NewRequest(method, url, reader)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("can't form request")
 	}
 
 	return req

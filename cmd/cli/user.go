@@ -3,12 +3,12 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 	"viadro_cli/utils"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -47,6 +47,7 @@ var UserDeleteCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(3),
 }
 
+// * RUN * //
 func cmdUserRegister(cmd *cobra.Command, args []string) {
 	input := struct {
 		Username string `json:"username"`
@@ -63,7 +64,7 @@ func cmdUserRegister(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -106,7 +107,7 @@ func cmdUserActivate(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -136,7 +137,7 @@ func cmdUserAuth(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -180,7 +181,7 @@ func cmdUserDelete(cmd *cobra.Command, args []string) {
 	url := fmt.Sprintf(`http://localhost:4000/v1/user/%d`, user_id)
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 
 	bearer := "Bearer " + viper.GetString("tkn")
@@ -189,7 +190,7 @@ func cmdUserDelete(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -205,6 +206,7 @@ func cmdUserDelete(cmd *cobra.Command, args []string) {
 	}
 }
 
+// * INIT * //
 func init() {
 	UserCmd.AddCommand(UserRegisterCmd)
 

@@ -3,11 +3,11 @@ package cli
 import (
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -51,20 +51,21 @@ var AdminDocumentListCmd = &cobra.Command{
 	Run:   cmdGetAllDocumentsAdmin,
 }
 
+// * RUN * //
 func cmdGetAllUsers(cmd *cobra.Command, args []string) {
 	URL := "http://localhost:4000/v1/admin/users"
 	bearer := "Bearer " + viper.GetString("tkn")
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
-		log.Fatal("Can't form request")
+		log.Fatal("can't form request", "error", err)
 	}
 	req.Header.Add("Authorization", bearer)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -106,7 +107,7 @@ func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 
 	bearer := "Bearer " + viper.GetString("tkn")
@@ -115,7 +116,7 @@ func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -152,7 +153,7 @@ func cmdGetAllDocumentsAdmin(cmd *cobra.Command, args []string) {
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
-		log.Fatal("Can't form request")
+		log.Fatal("can't form request")
 	}
 
 	bearer := "Bearer " + viper.GetString("tkn")
@@ -161,7 +162,7 @@ func cmdGetAllDocumentsAdmin(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -202,6 +203,7 @@ func cmdGetAllDocumentsAdmin(cmd *cobra.Command, args []string) {
 	}
 }
 
+// * INIT * //
 func init() {
 	AdminCmd.AddCommand(AdminUserCmd)
 	AdminUserCmd.AddCommand(AdminUserListCmd)

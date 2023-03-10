@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/log"
 	pdfcpu "github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -40,7 +40,7 @@ type Multipart struct {
 	Metadata string   `json:"metadata"`
 }
 
-// userCmd represents the user command
+// * COMMANDS * //
 var DocumentCmd = &cobra.Command{
 	Use:   "document",
 	Short: "Manage documents",
@@ -84,6 +84,7 @@ var DocumentGrabCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 }
 
+// * RUN * //
 func cmdGetDocument(cmd *cobra.Command, args []string) {
 	document_id, err := strconv.Atoi(args[0])
 	if err != nil {
@@ -100,7 +101,7 @@ func cmdGetDocument(cmd *cobra.Command, args []string) {
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal(err)
 	}
 
 	req.Header.Add("Authorization", bearer)
@@ -108,7 +109,7 @@ func cmdGetDocument(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -154,6 +155,69 @@ func cmdGetAllDocuments(cmd *cobra.Command, args []string) {
 	}
 }
 
+func cmdToggleDocument(cmd *cobra.Command, args []string) {
+	msg := Toggle(args)
+	fmt.Println(msg)
+}
+
+func cmdUploadDocument(cmd *cobra.Command, args []string) {
+	isHidden, err := cmd.Flags().GetBool("hidden")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	UploadDocument(args[0], args[1], isHidden)
+}
+
+func cmdDocumentsMerge(cmd *cobra.Command, args []string) {
+	mergeTempFile, err := os.Create("merge-temp.pdf")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer mergeTempFile.Close()
+
+	err = pdfcpu.Merge(args[0], args[1:], mergeTempFile, nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	UploadDocument("merge-temp.pdf", "merged,test", false)
+}
+
+func cmdGrabDocument(cmd *cobra.Command, args []string) {
+	// Create the file
+	out, err := os.Create("grab-temp.pdf")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer out.Close()
+
+	url := args[0]
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		log.Fatal("service unavailable, try again later")
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		log.Fatal("service unavailable, try again later")
+	}
+	defer res.Body.Close()
+
+	// Check server response
+	switch res.StatusCode {
+	case http.StatusOK:
+		_, err = io.Copy(out, res.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		UploadDocument("grab-temp.pdf", "grab,net", false)
+	}
+}
+
+// * FUNCTIONS * //
 func ListTesting(args []string, owner string) RespStruct {
 	URL := viper.GetString("endpoint") + "/documents"
 
@@ -168,7 +232,7 @@ func ListTesting(args []string, owner string) RespStruct {
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
-		log.Fatal("Can't form request")
+		log.Fatal("can't form request")
 	}
 
 	if owner != "all" {
@@ -179,7 +243,7 @@ func ListTesting(args []string, owner string) RespStruct {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -200,11 +264,6 @@ func ListTesting(args []string, owner string) RespStruct {
 	return RespStruct{}
 }
 
-func cmdToggleDocument(cmd *cobra.Command, args []string) {
-	msg := Toggle(args)
-	fmt.Println(msg)
-}
-
 func Toggle(args []string) string {
 	document_id, err := strconv.Atoi(args[0])
 	if err != nil {
@@ -216,7 +275,7 @@ func Toggle(args []string) string {
 
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 
 	req.Header.Add("Authorization", bearer)
@@ -224,7 +283,7 @@ func Toggle(args []string) string {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
+		log.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -240,34 +299,12 @@ func Toggle(args []string) string {
 	}
 }
 
-func cmdUploadDocument(cmd *cobra.Command, args []string) {
-	isHidden, err := cmd.Flags().GetBool("hidden")
+func MustOpen(f string) *os.File {
+	r, err := os.Open(f)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-
-	uploadDocument(args[0], args[1], isHidden)
-}
-
-func uploadDocument(filepath string, tagsX string, isHidden bool) {
-	client := &http.Client{Timeout: 10 * time.Second}
-	URL := viper.GetString("endpoint") + "/document"
-
-	//* UGLY AF, FIX
-	tagz := strings.Split(tagsX, ",")
-	tags := fmt.Sprintf("%#v", tagz)
-	tags = tags[8:]
-	tags = strings.Replace(tags, "{", "[", -1)
-	tags = strings.Replace(tags, "}", "]", -1)
-
-	metadata := fmt.Sprintf(`{"is_hidden": %v, "tags": %s}`, isHidden, tags)
-
-	input := Multipart{
-		Document: mustOpen(filepath),
-		Metadata: metadata,
-	}
-
-	Upload(client, URL, input)
+	return r
 }
 
 func Upload(client *http.Client, url string, input Multipart) (err error) {
@@ -328,62 +365,28 @@ func Upload(client *http.Client, url string, input Multipart) (err error) {
 	return
 }
 
-func mustOpen(f string) *os.File {
-	r, err := os.Open(f)
-	if err != nil {
-		panic(err)
-	}
-	return r
-}
-
-func cmdDocumentsMerge(cmd *cobra.Command, args []string) {
-	mergeTempFile, err := os.Create("merge-temp.pdf")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer mergeTempFile.Close()
-
-	err = pdfcpu.Merge(args[0], args[1:], mergeTempFile, nil)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	uploadDocument("merge-temp.pdf", "merged,test", false)
-}
-
-func cmdGrabDocument(cmd *cobra.Command, args []string) {
-	// Create the file
-	out, err := os.Create("grab-temp.pdf")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer out.Close()
-
-	url := args[0]
-	req, err := http.NewRequest(http.MethodGet, url, nil)
-	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
-	}
-
+func UploadDocument(filepath string, tagsX string, isHidden bool) {
 	client := &http.Client{Timeout: 10 * time.Second}
-	res, err := client.Do(req)
-	if err != nil {
-		log.Fatal("Service unavailable, try again later.")
-	}
-	defer res.Body.Close()
+	URL := viper.GetString("endpoint") + "/document"
 
-	// Check server response
-	switch res.StatusCode {
-	case http.StatusOK:
-		_, err = io.Copy(out, res.Body)
-		if err != nil {
-			log.Fatal(err)
-		}
+	//* UGLY AF, FIX
+	tagz := strings.Split(tagsX, ",")
+	tags := fmt.Sprintf("%#v", tagz)
+	tags = tags[8:]
+	tags = strings.Replace(tags, "{", "[", -1)
+	tags = strings.Replace(tags, "}", "]", -1)
 
-		uploadDocument("grab-temp.pdf", "grab,net", false)
+	metadata := fmt.Sprintf(`{"is_hidden": %v, "tags": %s}`, isHidden, tags)
+
+	input := Multipart{
+		Document: MustOpen(filepath),
+		Metadata: metadata,
 	}
+
+	Upload(client, URL, input)
 }
 
+// * INIT * //
 func init() {
 	DocumentCmd.AddCommand(DocumentGetCmd)
 	DocumentGetCmd.PersistentFlags().Bool("details", false, "See file details? Default: hidden")

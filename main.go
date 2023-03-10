@@ -1,11 +1,11 @@
 package main
 
 import (
-	"log"
 	"viadro_cli/cmd/cli"
 	"viadro_cli/cmd/tui"
 	"viadro_cli/config"
 
+	"github.com/charmbracelet/log"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +20,6 @@ func main() {
 
 	err := rootCmd.Execute()
 	if err != nil {
-		log.Fatalf("Could not execute command: %s\n", err.Error())
+		log.Fatal("invalid command")
 	}
 }
