@@ -2,9 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"strconv"
+	"time"
 	"viadro_cli/cmd/cli"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -14,10 +14,12 @@ import (
 )
 
 var TuiCmd = &cobra.Command{
-	Use:   "tui",
-	Short: "tui",
-	Long:  ``,
-	Run:   tuiFunc,
+	Use:     "interactive",
+	Aliases: []string{"i", "tui", "int"},
+	Example: "viadro interactive",
+	Short:   "Launch app in interactive (TUI) mode",
+	Long:    "Launch app in interactive (TUI) mode",
+	Run:     tuiFunc,
 }
 
 func tuiFunc(cli *cobra.Command, args []string) {
@@ -27,18 +29,31 @@ func tuiFunc(cli *cobra.Command, args []string) {
 var docStyle = lipgloss.NewStyle().Margin(1, 2)
 
 type Item struct {
-	title, desc string
-	id          int
+	id         int       //id
+	title      string    //title
+	desc       string    //link
+	tags       []string  //tags
+	uploadedat time.Time //uploaded
 }
 
-func (i Item) Title() string            { return i.title }
-func (i Item) Description() string      { return i.desc }
+func (i Item) Title() string { return i.title }
+func (i Item) Description() string {
+	timeFormatted := i.uploadedat.Format(time.RFC822)
+	// isHidden := ""
+	// if i.hidden == true {
+	// 	isHidden = "hidden"
+	// } else {
+	// 	isHidden = "visible"
+	// }
+	return fmt.Sprintf("ID: %d • LINK: %s • TAGS: %v • UPLOADED: %s", i.id, i.desc, i.tags, timeFormatted)
+}
 func (i Item) DescriptionValue() string { return i.desc }
 func (i Item) FilterValue() string      { return i.title }
 func (i Item) IdValue() int             { return i.id }
 
 type model struct {
-	list list.Model
+	list        list.Model
+	CurrentMode string
 }
 
 func (m model) Init() tea.Cmd {
@@ -52,13 +67,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 
-		if msg.String() == "p" {
-			itemsGet := cli.ListTesting([]string{}, "me")
+		if msg.String() == "2" {
+			m.CurrentMode = "me"
+			itemsGet := cli.List([]string{}, "me")
 
 			items := []list.Item{}
 
 			for _, val := range itemsGet.Documents {
-				items = append(items, Item{val.Title, val.Link, val.DocumentID})
+				items = append(items, Item{val.DocumentID, val.Title, val.Link, val.Tags, val.CreatedAt})
 			}
 			m.list.SetItems(items)
 			m.list.Title = "My Documents"
@@ -66,13 +82,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if msg.String() == "o" {
-			itemsGet := cli.ListTesting([]string{}, "all")
+		if msg.String() == "1" {
+			m.CurrentMode = "all"
+			itemsGet := cli.List([]string{}, "all")
 
 			items := []list.Item{}
 
 			for _, val := range itemsGet.Documents {
-				items = append(items, Item{val.Title, val.Link, val.DocumentID})
+				items = append(items, Item{val.DocumentID, val.Title, val.Link, val.Tags, val.CreatedAt})
 			}
 			m.list.SetItems(items)
 			m.list.Title = "All Documents"
@@ -80,13 +97,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if msg.String() == "i" {
-			itemsGet := cli.ListTesting([]string{}, "exclude")
+		if msg.String() == "3" {
+			m.CurrentMode = "exclude"
+			itemsGet := cli.List([]string{}, "exclude")
 
 			items := []list.Item{}
 
 			for _, val := range itemsGet.Documents {
-				items = append(items, Item{val.Title, val.Link, val.DocumentID})
+				items = append(items, Item{val.DocumentID, val.Title, val.Link, val.Tags, val.CreatedAt})
 			}
 			m.list.SetItems(items)
 			m.list.Title = "All Documents (excl. my)"
@@ -94,21 +112,38 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 
-		if msg.String() == "t" {
-			// x := m.list.Index()
-			y := m.list.SelectedItem()
-			z := y.IdValue()
-			zStr := strconv.Itoa(z)
+		if msg.String() == "d" {
+			selectedItem := m.list.SelectedItem()
+			selectedItemId := selectedItem.IdValue()
+			selectedItemIdStr := strconv.Itoa(selectedItemId)
 
-			msg := cli.Toggle([]string{zStr})
-			// statusCmd := m.list.NewStatusMessage(fmt.Sprintf("Toggled visibility of document with ID: %d", x))
+			msg := cli.Delete([]string{selectedItemIdStr})
 			statusCmd := m.list.NewStatusMessage(msg)
-			itemsGet := cli.ListTesting([]string{}, "all")
+			itemsGet := cli.List([]string{}, m.CurrentMode)
 
 			items := []list.Item{}
 
 			for _, val := range itemsGet.Documents {
-				items = append(items, Item{val.Title, val.Link, val.DocumentID})
+				items = append(items, Item{val.DocumentID, val.Title, val.Link, val.Tags, val.CreatedAt})
+			}
+			m.list.SetItems(items)
+
+			return m, tea.Batch(statusCmd)
+		}
+
+		if msg.String() == "t" {
+			selectedItem := m.list.SelectedItem()
+			selectedItemId := selectedItem.IdValue()
+			selectedItemIdStr := strconv.Itoa(selectedItemId)
+
+			msg := cli.Toggle([]string{selectedItemIdStr})
+			statusCmd := m.list.NewStatusMessage(msg)
+			itemsGet := cli.List([]string{}, m.CurrentMode)
+
+			items := []list.Item{}
+
+			for _, val := range itemsGet.Documents {
+				items = append(items, Item{val.DocumentID, val.Title, val.Link, val.Tags, val.CreatedAt})
 			}
 			m.list.SetItems(items)
 
@@ -116,10 +151,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		if msg.String() == "enter" {
-			y := m.list.SelectedItem()
-			exec.Command("xdg-open", y.DescriptionValue()).Start()
+			selectedItem := m.list.SelectedItem()
+			exec.Command("xdg-open", selectedItem.DescriptionValue()).Start()
 
-			return m, nil
+			statusCmd := m.list.NewStatusMessage("Link opened in browser")
+
+			return m, tea.Batch(statusCmd)
 		}
 
 	case tea.WindowSizeMsg:
@@ -137,21 +174,19 @@ func (m model) View() string {
 }
 
 func setup() {
-	itemsGet := cli.ListTesting([]string{}, "all")
-
+	documents := cli.List([]string{}, "all")
 	items := []list.Item{}
 
-	for _, val := range itemsGet.Documents {
-		items = append(items, Item{val.Title, val.Link, val.DocumentID})
+	for _, val := range documents.Documents {
+		items = append(items, Item{val.DocumentID, val.Title, val.Link, val.Tags, val.CreatedAt})
 	}
 
-	m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0)}
+	m := model{list: list.New(items, list.NewDefaultDelegate(), 0, 0), CurrentMode: "all"}
 	m.list.Title = "All documents"
 
 	p := tea.NewProgram(m, tea.WithAltScreen())
-
-	if _, err := p.Run(); err != nil {
-		fmt.Println("Error running program:", err)
-		os.Exit(1)
+	_, err := p.Run()
+	if err != nil {
+		cli.Logger.Fatal("app error")
 	}
 }

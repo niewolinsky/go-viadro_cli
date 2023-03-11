@@ -80,7 +80,7 @@ func cmdUserRegister(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		logger.Fatal("service unavailable, try again later")
+		Logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -98,16 +98,16 @@ func cmdUserRegister(cmd *cobra.Command, args []string) {
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			logger.Fatal("app error")
+			Logger.Fatal("app error")
 		}
 
-		logger.Info("created new user, check your email for account activation", "user_id", respStruct.User.UserId)
+		Logger.Info("created new user, check your email for account activation", "user_id", respStruct.User.UserId)
 	case http.StatusBadRequest:
-		logger.Fatal("malformed json request")
+		Logger.Fatal("malformed json request")
 	case http.StatusUnprocessableEntity:
-		logger.Fatal("account with given email exists")
+		Logger.Fatal("account with given email exists")
 	default:
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 }
 
@@ -123,19 +123,19 @@ func cmdUserActivate(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		logger.Fatal("service unavailable, try again later")
+		Logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
 	switch res.StatusCode {
 	case http.StatusOK:
-		logger.Info("user successfully activated, use auth command to login")
+		Logger.Info("user successfully activated, use auth command to login")
 	case http.StatusBadRequest:
-		logger.Fatal("malformed json request")
+		Logger.Fatal("malformed json request")
 	case http.StatusUnprocessableEntity:
-		logger.Fatal("invalid or expired token")
+		Logger.Fatal("invalid or expired token")
 	default:
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 }
 
@@ -153,7 +153,7 @@ func cmdUserAuth(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		logger.Fatal("service unavailable, try again later")
+		Logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -174,30 +174,30 @@ func cmdUserAuth(cmd *cobra.Command, args []string) {
 		viper.Set("tkn", respStruct.AuthenticationToken.Token)
 		err = viper.WriteConfig()
 		if err != nil {
-			logger.Fatal("app error")
+			Logger.Fatal("app error")
 		}
 
-		logger.Info("successfully logged in |", "token", respStruct.AuthenticationToken.Token)
-		logger.Info("token has been stored in config, for the next 24 hours requests will automatically use it")
+		Logger.Info("successfully logged in |", "token", respStruct.AuthenticationToken.Token)
+		Logger.Info("token has been stored in config, for the next 24 hours requests will automatically use it")
 	case http.StatusBadRequest:
-		logger.Fatal("malformed json request")
+		Logger.Fatal("malformed json request")
 	case http.StatusUnauthorized:
-		logger.Fatal("wrong email or password")
+		Logger.Fatal("wrong email or password")
 	default:
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 }
 
 func cmdUserDelete(cmd *cobra.Command, args []string) {
 	user_id, err := strconv.Atoi(args[0])
 	if err != nil {
-		logger.Fatal("invalid user id")
+		Logger.Fatal("invalid user id")
 	}
 
 	url := fmt.Sprintf(`http://localhost:4000/v1/user/%d`, user_id)
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 
 	bearer := "Bearer " + viper.GetString("tkn")
@@ -206,7 +206,7 @@ func cmdUserDelete(cmd *cobra.Command, args []string) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		logger.Fatal("service unavailable, try again later")
+		Logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -214,11 +214,11 @@ func cmdUserDelete(cmd *cobra.Command, args []string) {
 	case http.StatusNoContent:
 		fmt.Println("user and its files successfully deleted")
 	case http.StatusUnauthorized:
-		logger.Fatal("you do not have the permissions to delete the user")
+		Logger.Fatal("you do not have the permissions to delete the user")
 	case http.StatusNotFound:
-		logger.Fatal("user with given id does not exists")
+		Logger.Fatal("user with given id does not exists")
 	default:
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 }
 
@@ -226,14 +226,14 @@ func cmdUserLogout(cmd *cobra.Command, args []string) {
 	token := viper.GetString("tkn")
 
 	if token == "" {
-		logger.Error("user is not logged in")
+		Logger.Error("user is not logged in")
 	} else {
 		viper.Set("tkn", "")
 		err := viper.WriteConfig()
 		if err != nil {
-			logger.Fatal("app error")
+			Logger.Fatal("app error")
 		}
-		logger.Info("user logged out successfully")
+		Logger.Info("user logged out successfully")
 	}
 }
 

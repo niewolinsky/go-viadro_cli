@@ -66,14 +66,14 @@ func cmdGetAllUsers(cmd *cobra.Command, args []string) {
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 	req.Header.Add("Authorization", bearer)
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
 	if err != nil {
-		logger.Fatal("service unavailable, try again later")
+		Logger.Fatal("service unavailable, try again later")
 	}
 	defer res.Body.Close()
 
@@ -92,33 +92,33 @@ func cmdGetAllUsers(cmd *cobra.Command, args []string) {
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			logger.Fatal("app error")
+			Logger.Fatal("app error")
 		}
 
-		logger.Info("list of users: ")
+		Logger.Info("list of users: ")
 		for _, user := range respStruct.Users {
 			fmt.Printf("ID: %d | CREATED: %v | USERNAME: %s | EMAIL: %s | ACTIVATED: %v | ADMIN: %v \n", user.UserId, user.CreatedAt, user.Username, user.Email, user.Activated, user.IsAdmin)
 		}
 	case http.StatusUnauthorized:
-		logger.Fatal("invalid or expired token, use auth command to grab a new token")
+		Logger.Fatal("invalid or expired token, use auth command to grab a new token")
 	case http.StatusForbidden:
-		logger.Fatal("you do not have required privileges to perform this action")
+		Logger.Fatal("you do not have required privileges to perform this action")
 	default:
-		logger.Fatal("internal server error, try again later")
+		Logger.Fatal("internal server error, try again later")
 	}
 }
 
 func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 	user_id, err := strconv.Atoi(args[0])
 	if err != nil {
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 
 	url := fmt.Sprintf(`http://localhost:4000/v1/admin/user/%d`, user_id)
 
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	if err != nil {
-		logger.Fatal("app error")
+		Logger.Fatal("app error")
 	}
 
 	bearer := "Bearer " + viper.GetString("tkn")
@@ -146,16 +146,16 @@ func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			logger.Fatal("app error")
+			Logger.Fatal("app error")
 		}
 
-		logger.Info("Successfully toggled admin privileges of user with id: %d", respStruct.User.UserID)
+		Logger.Info("Successfully toggled admin privileges of user with id: %d", respStruct.User.UserID)
 	case http.StatusUnauthorized:
-		logger.Fatal("you do not have permissions to toggle admin privileges")
+		Logger.Fatal("you do not have permissions to toggle admin privileges")
 	case http.StatusNotFound:
-		logger.Fatal("user with given id does not exist")
+		Logger.Fatal("user with given id does not exist")
 	default:
-		logger.Fatal("internal server error, try again later")
+		Logger.Fatal("internal server error, try again later")
 	}
 }
 
@@ -183,20 +183,20 @@ func cmdGetAllDocumentsAdmin(cmd *cobra.Command, args []string) {
 
 		err = json.NewDecoder(res.Body).Decode(&respStruct)
 		if err != nil {
-			logger.Fatal("app error")
+			Logger.Fatal("app error")
 		}
 
-		logger.Info("list of documents: ")
+		Logger.Info("list of documents: ")
 		for _, document := range respStruct.Documents {
 			fmt.Printf("ID: %d | TITLE: %s | LINK: %s | TAGS: %v | UPLOADED: %v \n", document.DocumentID, document.Title, document.Link, document.Tags, document.CreatedAt)
 		}
 
 	case http.StatusUnauthorized:
-		logger.Fatal("invalid or expired token, use auth command to grab a new token")
+		Logger.Fatal("invalid or expired token, use auth command to grab a new token")
 	case http.StatusForbidden:
-		logger.Fatal("you do not have required privileges to perform this action")
+		Logger.Fatal("you do not have required privileges to perform this action")
 	default:
-		logger.Fatal("internal server error, try again later")
+		Logger.Fatal("internal server error, try again later")
 	}
 }
 
