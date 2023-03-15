@@ -37,8 +37,8 @@ type DocumentList struct {
 }
 
 type Multipart struct {
-	Document *os.File `json:"document"`
-	Metadata string   `json:"metadata"`
+	Document bytes.Buffer `json:"document"`
+	Metadata string       `json:"metadata"`
 }
 
 // * COMMANDS * //
@@ -94,7 +94,7 @@ var DocumentMergeCmd = &cobra.Command{
 	Example: "viadro document merge mergedpdf work,school sample1.pdf sample2.pdf",
 	Short:   "Merge many documents into one and upload to the cloud",
 	Long:    "Merge many documents into one and upload to the cloud",
-	Run:     cmdDocumentsMerge,
+	Run:     cmdMergeDocuments,
 	Args:    cobra.MinimumNArgs(3),
 }
 var DocumentGrabCmd = &cobra.Command{
@@ -203,37 +203,33 @@ func cmdUploadDocument(cmd *cobra.Command, args []string) {
 		Logger.Fatal("app error")
 	}
 
-	UploadDocument(args[0], args[1], isHidden)
-}
-
-func cmdDocumentsMerge(cmd *cobra.Command, args []string) {
-	mergeTempFile, err := os.Create(args[0] + ".pdf")
+	r, err := os.ReadFile(args[0])
 	if err != nil {
 		Logger.Fatal("app error")
 	}
-	defer mergeTempFile.Close()
-	defer os.Remove(args[0] + ".pdf")
 
+	buffer := bytes.NewBuffer(r)
+
+	UploadDocument(buffer, args[1], isHidden, args[0]+".pdf")
+}
+
+func cmdMergeDocuments(cmd *cobra.Command, args []string) {
+	buffer := bytes.NewBuffer([]byte{})
 	isHidden, err := cmd.Flags().GetBool("hidden")
 	if err != nil {
 		Logger.Fatal("app error")
 	}
 
-	err = pdfcpu.Merge(args[2], args[3:], mergeTempFile, nil)
+	err = pdfcpu.Merge(args[2], args[3:], buffer, nil)
 	if err != nil {
 		Logger.Fatal("app error")
 	}
 
-	UploadDocument(args[0]+".pdf", args[1], isHidden)
+	UploadDocument(buffer, args[1], isHidden, fmt.Sprintf("%s%s", args[0], ".pdf"))
 }
 
 func cmdGrabDocument(cmd *cobra.Command, args []string) {
-	out, err := os.Create(args[0] + ".pdf")
-	if err != nil {
-		Logger.Fatal("app error")
-	}
-	defer out.Close()
-	defer os.Remove(args[0] + ".pdf")
+	buffer := bytes.NewBuffer([]byte{})
 
 	isHidden, err := cmd.Flags().GetBool("hidden")
 	if err != nil {
@@ -255,12 +251,12 @@ func cmdGrabDocument(cmd *cobra.Command, args []string) {
 
 	switch res.StatusCode {
 	case http.StatusOK:
-		_, err = io.Copy(out, res.Body)
+		_, err = io.Copy(buffer, res.Body)
 		if err != nil {
 			Logger.Fatal(err)
 		}
 
-		UploadDocument(args[0]+".pdf", args[1], isHidden)
+		UploadDocument(buffer, args[1], isHidden, fmt.Sprintf("%s%s", args[0], ".pdf"))
 
 	default:
 		Logger.Fatal("app error")
@@ -384,15 +380,8 @@ func Delete(args []string) string {
 	}
 }
 
-func MustOpen(f string) *os.File {
-	r, err := os.Open(f)
-	if err != nil {
-		panic(err)
-	}
-	return r
-}
-
-func UploadDocument(filepath string, tagsX string, isHidden bool) {
+func UploadDocument(file *bytes.Buffer, tagsX string, isHidden bool, title string) {
+	fmt.Println(title)
 	client := &http.Client{Timeout: 10 * time.Second}
 	URL := viper.GetString("endpoint") + "/document"
 
@@ -406,31 +395,28 @@ func UploadDocument(filepath string, tagsX string, isHidden bool) {
 	metadata := fmt.Sprintf(`{"is_hidden": %v, "tags": %s}`, isHidden, tags)
 
 	input := Multipart{
-		Document: MustOpen(filepath),
+		Document: *file,
 		Metadata: metadata,
 	}
 
-	Upload(client, URL, input)
+	Upload(client, URL, input, title)
 }
 
-func Upload(client *http.Client, url string, input Multipart) (err error) {
+func Upload(client *http.Client, url string, input Multipart, title string) (err error) {
 	b := bytes.Buffer{}
 	w := multipart.NewWriter(&b)
 
-	mtype, err := mimetype.DetectReader(input.Document)
-	if err != nil {
-		Logger.Fatal(err)
-	}
+	mtype := mimetype.Detect(input.Document.Bytes())
 	if mtype.String() != "application/pdf" || mtype.Extension() != ".pdf" {
 		Logger.Fatal(errors.New("invalid file format, for now Viadro only accepts PDF files"))
 	}
 
-	wr, err := w.CreateFormFile("document", input.Document.Name())
+	wr, err := w.CreateFormFile("document", title)
 	if err != nil {
 		Logger.Fatal("app error")
 	}
 
-	_, err = io.Copy(wr, input.Document)
+	_, err = io.Copy(wr, &input.Document)
 	if err != nil {
 		Logger.Fatal("app error")
 	}
