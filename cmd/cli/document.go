@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -12,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gabriel-vasile/mimetype"
 	pdfcpu "github.com/pdfcpu/pdfcpu/pkg/api"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -394,7 +396,7 @@ func UploadDocument(filepath string, tagsX string, isHidden bool) {
 	client := &http.Client{Timeout: 10 * time.Second}
 	URL := viper.GetString("endpoint") + "/document"
 
-	//* UGLY AF, FIX
+	//* FIX
 	tagz := strings.Split(tagsX, ",")
 	tags := fmt.Sprintf("%#v", tagz)
 	tags = tags[8:]
@@ -414,38 +416,48 @@ func UploadDocument(filepath string, tagsX string, isHidden bool) {
 func Upload(client *http.Client, url string, input Multipart) (err error) {
 	b := bytes.Buffer{}
 	w := multipart.NewWriter(&b)
-	wr, err := w.CreateFormFile("document", input.Document.Name())
+
+	mtype, err := mimetype.DetectReader(input.Document)
 	if err != nil {
 		Logger.Fatal(err)
+	}
+	if mtype.String() != "application/pdf" || mtype.Extension() != ".pdf" {
+		Logger.Fatal(errors.New("invalid file format, for now Viadro only accepts PDF files"))
+	}
+
+	wr, err := w.CreateFormFile("document", input.Document.Name())
+	if err != nil {
+		Logger.Fatal("app error")
 	}
 
 	_, err = io.Copy(wr, input.Document)
 	if err != nil {
-		Logger.Fatal(err)
+		Logger.Fatal("app error")
 	}
 
 	wr, err = w.CreateFormField("metadata")
 	if err != nil {
-		Logger.Fatal(err)
+		Logger.Fatal("app error")
 	}
 
 	_, err = io.Copy(wr, strings.NewReader(input.Metadata))
 	if err != nil {
-		Logger.Fatal(err)
+		Logger.Fatal("app error")
 	}
 	w.Close()
 
 	bearer := "Bearer " + viper.GetString("tkn")
 	req, err := http.NewRequest("POST", url, &b)
 	if err != nil {
-		Logger.Fatal(err)
+		Logger.Fatal("app error")
 	}
+
 	req.Header.Add("Authorization", bearer)
 	req.Header.Set("Content-Type", w.FormDataContentType())
 
 	res, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
+		Logger.Fatal("server not responding, try again later")
 	}
 	defer res.Body.Close()
 
