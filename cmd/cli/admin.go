@@ -61,7 +61,7 @@ var AdminDocumentListCmd = &cobra.Command{
 
 // * RUN * //
 func cmdGetAllUsers(cmd *cobra.Command, args []string) {
-	URL := "http://localhost:4000/v1/admin/users"
+	URL := viper.GetString("endpoint")+"/admin/users"
 	bearer := "Bearer " + viper.GetString("tkn")
 
 	req, err := http.NewRequest("GET", URL, nil)
@@ -114,7 +114,8 @@ func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 		Logger.Fatal("app error")
 	}
 
-	url := fmt.Sprintf(`http://localhost:4000/v1/admin/user/%d`, user_id)
+	urlPart := viper.GetString("endpoint")
+	url := urlPart + fmt.Sprintf("/admin/user/%d", user_id)
 
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	if err != nil {
@@ -160,7 +161,7 @@ func cmdGrantAdmin(cmd *cobra.Command, args []string) {
 }
 
 func cmdGetAllDocumentsAdmin(cmd *cobra.Command, args []string) {
-	URL := "http://localhost:4000/v1/admin/documents"
+	URL := viper.GetString("endpoint")+"/admin/documents"
 
 	req, err := http.NewRequest("GET", URL, nil)
 	if err != nil {

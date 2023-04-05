@@ -16,5 +16,7 @@ func PrepareRequest(input interface{}, url string, method string) *http.Request 
 		log.Fatal("can't form request")
 	}
 
+	req.Header.Set("Content-Type", "application/json")
+
 	return req
 }

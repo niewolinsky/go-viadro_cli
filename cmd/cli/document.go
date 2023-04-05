@@ -113,8 +113,9 @@ func cmdGetDocument(cmd *cobra.Command, args []string) {
 		Logger.Fatal("invalid document id")
 	}
 
-	url := fmt.Sprintf(`http://localhost:4000/v1/document/%d`, document_id)
-	bearer := "Bearer " + viper.GetString("tkn")
+	urlPart := viper.GetString("endpoint")
+	url := urlPart + fmt.Sprintf("/document/%d", document_id)
+	Logger.Info(url)
 
 	showDetails, err := cmd.Flags().GetBool("details")
 	if err != nil {
@@ -126,6 +127,7 @@ func cmdGetDocument(cmd *cobra.Command, args []string) {
 		Logger.Fatal("app error")
 	}
 
+	bearer := "Bearer " + viper.GetString("tkn")
 	req.Header.Add("Authorization", bearer)
 
 	client := &http.Client{Timeout: 10 * time.Second}
@@ -210,7 +212,14 @@ func cmdUploadDocument(cmd *cobra.Command, args []string) {
 
 	buffer := bytes.NewBuffer(r)
 
-	UploadDocument(buffer, args[1], isHidden, args[0]+".pdf")
+	filename := ""
+	if len(args[0]) < 4 || args[0][len(args[0])-4:] != ".pdf" {
+		filename = args[0]+".pdf"
+	} else {
+		filename = args[0]
+	}
+
+	UploadDocument(buffer, args[1], isHidden, filename)
 }
 
 func cmdMergeDocuments(cmd *cobra.Command, args []string) {
@@ -274,6 +283,8 @@ func List(args []string, owner string) DocumentList {
 		URL += "/?owner=me"
 	case "exclude":
 		URL += "/?owner=-me"
+	case "-me":
+		URL += "/?owner=-me"
 	}
 
 	req, err := http.NewRequest("GET", URL, nil)
@@ -281,10 +292,11 @@ func List(args []string, owner string) DocumentList {
 		Logger.Fatal("app error")
 	}
 
-	if owner != "all" {
+	//! BROKEN ON TYPESCRIPT,
+	// if owner != "all" {
 		bearer := "Bearer " + viper.GetString("tkn")
 		req.Header.Add("Authorization", bearer)
-	}
+	// }
 
 	client := &http.Client{Timeout: 10 * time.Second}
 	res, err := client.Do(req)
@@ -351,7 +363,8 @@ func Delete(args []string) string {
 		Logger.Fatal("app error")
 	}
 
-	url := fmt.Sprintf(`http://localhost:4000/v1/document/%d`, document_id)
+	urlPart := viper.GetString("endpoint")
+	url := urlPart + fmt.Sprintf("/document/%d", document_id)
 
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
@@ -381,7 +394,6 @@ func Delete(args []string) string {
 }
 
 func UploadDocument(file *bytes.Buffer, tagsX string, isHidden bool, title string) {
-	fmt.Println(title)
 	client := &http.Client{Timeout: 10 * time.Second}
 	URL := viper.GetString("endpoint") + "/document"
 
@@ -482,9 +494,11 @@ func init() {
 	DocumentGetCmd.PersistentFlags().Bool("details", false, "See file details? Default: hidden")
 
 	DocumentCmd.AddCommand(DocumentListCmd)
-	DocumentListCmd.PersistentFlags().StringP("owner", "o", "all", "Files from which owners to show: all, me, exclude")
+	DocumentListCmd.PersistentFlags().StringP("owner", "o", "all", "Files from which owners to show: all, me, exclude/-me")
 
 	DocumentCmd.AddCommand(DocumentToggleCmd)
+
+	DocumentCmd.AddCommand(DocumentDeleteCmd)
 
 	DocumentCmd.AddCommand(DocumentUploadCmd)
 	DocumentUploadCmd.PersistentFlags().Bool("hidden", false, "Should the file be hidden? Default: visible")
