@@ -115,7 +115,6 @@ func cmdGetDocument(cmd *cobra.Command, args []string) {
 
 	urlPart := viper.GetString("endpoint")
 	url := urlPart + fmt.Sprintf("/document/%d", document_id)
-	Logger.Info(url)
 
 	showDetails, err := cmd.Flags().GetBool("details")
 	if err != nil {
@@ -328,7 +327,8 @@ func Toggle(args []string) string {
 		Logger.Fatal("app error")
 	}
 
-	url := fmt.Sprintf(`http://localhost:4000/v1/document/%d`, document_id)
+	urlPart := viper.GetString("endpoint")
+	url := urlPart + fmt.Sprintf("/document/%d", document_id)
 
 	req, err := http.NewRequest(http.MethodPatch, url, nil)
 	if err != nil {

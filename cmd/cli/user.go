@@ -194,7 +194,9 @@ func cmdUserDelete(cmd *cobra.Command, args []string) {
 		Logger.Fatal("invalid user id")
 	}
 
-	url := fmt.Sprintf(`http://localhost:4000/v1/user/%d`, user_id)
+	urlPart := viper.GetString("endpoint")
+	url := urlPart + fmt.Sprintf("/user/%d", user_id)
+
 	req, err := http.NewRequest(http.MethodDelete, url, nil)
 	if err != nil {
 		Logger.Fatal("app error")
